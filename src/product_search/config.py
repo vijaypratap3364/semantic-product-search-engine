@@ -109,7 +109,7 @@ class DenseSettings(ImmutableModel):
 
     model_name: str = Field(default="BAAI/bge-small-en-v1.5", min_length=1)
     expected_dimension: int = Field(default=384, ge=1)
-    batch_size: int = Field(default=64, ge=1, le=1024)
+    batch_size: int = Field(default=1, ge=1, le=1024)
     normalization: Literal["l2"] = "l2"
 
 

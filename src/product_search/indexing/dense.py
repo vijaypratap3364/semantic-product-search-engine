@@ -13,6 +13,7 @@ from typing import Any, Literal, Protocol, TypedDict, cast, runtime_checkable
 import fastembed
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
 from fastembed import TextEmbedding
 from numpy.typing import NDArray
 from pandas import DataFrame
@@ -156,7 +157,11 @@ def build_dense_index(
             f"{settings.model_name!r}"
         )
 
-    products = pd.read_parquet(products_path)
+    available_columns = set(pq.read_schema(products_path).names)
+    missing_columns = {"product_id", "product_text"} - available_columns
+    if missing_columns:
+        raise ValueError(f"products are missing required columns: {sorted(missing_columns)}")
+    products = pd.read_parquet(products_path, columns=["product_id", "product_text"])
     ordered_products = _validate_and_order_products(products)
     output_dir.mkdir(parents=True, exist_ok=True)
     artifact_paths = {filename: output_dir / filename for filename in REQUIRED_ARTIFACTS}
@@ -238,7 +243,7 @@ def build_dense_index(
         os.replace(embedding_temporary, artifact_paths[EMBEDDINGS_FILENAME])
         os.replace(product_ids_temporary, artifact_paths[PRODUCT_IDS_FILENAME])
         os.replace(metadata_temporary, metadata_path)
-    except Exception:
+    except BaseException:
         if embeddings is not None:
             embeddings.flush()
             del embeddings

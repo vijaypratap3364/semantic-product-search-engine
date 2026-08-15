@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 from pandas import DataFrame
 
 from product_search.config import DenseSettings
+from product_search.indexing import build_dense as build_dense_module
 from product_search.indexing.dense import (
     EMBEDDINGS_FILENAME,
     DenseIndexArtifactError,
@@ -120,6 +121,42 @@ def test_dense_build_refuses_overwrite_without_force(tmp_path: Path) -> None:
         force=True,
     )
     assert metadata["product_count"] == 3
+
+
+def test_dense_build_cli_uses_config_and_explicit_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    products_path = tmp_path / "products.parquet"
+    DataFrame({"product_id": ["p1"], "product_text": ["alpha"]}).to_parquet(
+        products_path, index=False
+    )
+    vector = [1.0, *([0.0] * 383)]
+    provider = FakeEmbeddingProvider({"alpha": vector})
+    provider.model_name = "BAAI/bge-small-en-v1.5"
+    monkeypatch.setattr(
+        build_dense_module,
+        "FastEmbedProvider",
+        lambda *args, **kwargs: provider,
+    )
+    output_dir = tmp_path / "cli-dense"
+
+    exit_code = build_dense_module.main(
+        [
+            "--products",
+            str(products_path),
+            "--index-dir",
+            str(output_dir),
+            "--batch-size",
+            "1",
+            "--local-files-only",
+        ]
+    )
+
+    assert exit_code == 0
+    assert load_dense_index(output_dir).embeddings.shape == (1, 384)
+    assert '"model_name": "BAAI/bge-small-en-v1.5"' in capsys.readouterr().out
 
 
 def test_dense_build_rejects_provider_model_or_dimension_mismatch(tmp_path: Path) -> None:

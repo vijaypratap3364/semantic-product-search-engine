@@ -34,7 +34,7 @@ def test_load_base_configuration() -> None:
     assert settings.lexical.norm == "l2"
     assert settings.dense.model_name == "BAAI/bge-small-en-v1.5"
     assert settings.dense.expected_dimension == 384
-    assert settings.dense.batch_size == 64
+    assert settings.dense.batch_size == 1
     assert settings.dense.normalization == "l2"
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
