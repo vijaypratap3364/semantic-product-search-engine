@@ -1,0 +1,49 @@
+# Python environments and bytecode
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test, type-checking, lint, and coverage output
+.pytest_cache/
+.pytest_tmp/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local data and generated artifacts
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+artifacts/indexes/*
+!artifacts/indexes/.gitkeep
+artifacts/embeddings/*
+!artifacts/embeddings/.gitkeep
+artifacts/models/*
+!artifacts/models/.gitkeep
+artifacts/reports/*
+!artifacts/reports/.gitkeep
+
+# Local databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Local configuration, caches, and editor files
+.env
+.env.*
+!.env.example
+.cache/
+.uv-cache/
+.fastembed_cache/
+.huggingface/
+.idea/
+.vscode/
+*.log
+*.tmp
