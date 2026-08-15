@@ -146,9 +146,10 @@ product names, product features, and label values had no missing values.
 
 - WANDS judgments cover selected query-product pairs, not every product for every query. An
   unjudged product is unknown rather than necessarily irrelevant.
-- The 1,575 repeated query-product rows include 14 pairs with conflicting labels. A later
-  evaluation stage must define and test an aggregation policy without using test results for
-  tuning.
+- The 1,575 repeated query-product rows include 14 pairs with conflicting labels. Evaluation uses
+  a separately generated, auditable canonical table; the source-faithful processed labels remain
+  unchanged. See [the evaluation methodology](evaluation.md) for exact counts and the documented
+  resolution policy.
 - Catalog fields contain natural missingness and may contain noisy formatting or marketing text.
 - `query_class` is dataset metadata, not a feature available for a new free-form search query.
 - The dataset is a static research snapshot and does not represent live inventory, price,

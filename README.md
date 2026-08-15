@@ -5,9 +5,9 @@ catalog. The project will compare TF-IDF lexical retrieval, dense semantic retri
 retrieval, and a lightweight supervised relevance reranker under a shared offline evaluation
 framework.
 
-Implementation is in progress. The repository foundation and reproducible WANDS ingestion pipeline
-are complete. Search indexes, ranking models, the API, and the user interface have not been built
-yet.
+Implementation is in progress. The repository foundation, reproducible WANDS ingestion, canonical
+evaluation judgments, deterministic query splits, and offline evaluation framework are complete.
+Search indexes, ranking models, the API, and the user interface have not been built yet.
 
 ## Prepare WANDS data
 
@@ -16,11 +16,14 @@ Download only the three required official files, then validate and prepare local
 ```powershell
 uv run python -m product_search.data.download
 uv run python -m product_search.data.prepare
+uv run python -m product_search.evaluation.judgments
+uv run python -m product_search.evaluation.splits
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
 Git. See [the data-source documentation](docs/data-source.md) for provenance, license, schemas,
-verified counts, and limitations.
+verified counts, and limitations. See [the evaluation documentation](docs/evaluation.md) for the
+canonical judgment policy, query partitions, metric definitions, evaluation modes, and reporting.
 
 ## Development
 
