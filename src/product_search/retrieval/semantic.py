@@ -64,6 +64,12 @@ class SemanticSearchEngine:
 
         return self._product_ids
 
+    @property
+    def embedding_matrix_nbytes(self) -> int:
+        """Return the exact float32 matrix payload size, excluding runtime overhead."""
+
+        return int(self._embeddings.nbytes)
+
     def search(self, query: str, top_k: int) -> list[SearchResult]:
         """Embed one query and partially select its highest full-catalog dot products."""
 

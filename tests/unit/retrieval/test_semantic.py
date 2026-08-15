@@ -12,6 +12,7 @@ from pandas import DataFrame
 
 from product_search.config import DenseSettings
 from product_search.indexing.dense import build_dense_index
+from product_search.retrieval import semantic as semantic_module
 from product_search.retrieval.semantic import SemanticSearchEngine
 
 
@@ -124,3 +125,43 @@ def test_semantic_rejects_provider_for_different_model(
             )(),
             different,
         )
+
+
+def test_semantic_search_cli_prints_ranked_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    products_path = tmp_path / "products.parquet"
+    DataFrame({"product_id": ["p1"], "product_text": ["document"]}).to_parquet(
+        products_path, index=False
+    )
+    vector = [1.0, *([0.0] * 383)]
+    provider = FakeEmbeddingProvider()
+    provider.model_name = "BAAI/bge-small-en-v1.5"
+    provider.vectors = {"document": vector, "query": vector}
+    index_dir = tmp_path / "dense"
+    build_dense_index(
+        products_path,
+        index_dir,
+        provider=provider,
+        settings=DenseSettings(
+            model_name="BAAI/bge-small-en-v1.5",
+            expected_dimension=384,
+            batch_size=1,
+        ),
+    )
+    monkeypatch.setattr(
+        semantic_module,
+        "FastEmbedProvider",
+        lambda *args, **kwargs: provider,
+    )
+
+    exit_code = semantic_module.main(
+        ["query", "--top-k", "1", "--index-dir", str(index_dir), "--local-files-only"]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert '"product_id": "p1"' in output
+    assert '"rank": 1' in output
