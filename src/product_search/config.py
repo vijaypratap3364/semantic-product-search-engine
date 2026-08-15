@@ -104,6 +104,15 @@ class LexicalSettings(ImmutableModel):
         return self
 
 
+class DenseSettings(ImmutableModel):
+    """Lightweight FastEmbed index and model settings."""
+
+    model_name: str = Field(default="BAAI/bge-small-en-v1.5", min_length=1)
+    expected_dimension: int = Field(default=384, ge=1)
+    batch_size: int = Field(default=64, ge=1, le=1024)
+    normalization: Literal["l2"] = "l2"
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -121,6 +130,7 @@ class ProjectSettings(BaseSettings):
     relevance_mapping: RelevanceMapping
     splits: SplitProportions
     lexical: LexicalSettings
+    dense: DenseSettings
 
     def resolve_paths(self, project_root: Path) -> Self:
         """Return settings with all configured paths made absolute."""

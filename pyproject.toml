@@ -11,6 +11,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.12,<3.13"
 authors = [{ name = "Vijay Pratap Singh" }]
 dependencies = [
+    "fastembed>=0.8,<0.9",
     "joblib>=1.4,<2",
     "numpy>=1.26,<3",
     "pandas>=2.2,<3",
@@ -68,6 +69,9 @@ addopts = [
 ]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "embedding: optional integration tests that require the FastEmbed model in the local cache",
+]
 
 [tool.coverage.run]
 branch = true
