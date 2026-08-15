@@ -6,8 +6,9 @@ retrieval, and a lightweight supervised relevance reranker under a shared offlin
 framework.
 
 Implementation is in progress. The repository foundation, reproducible WANDS ingestion, canonical
-evaluation judgments, deterministic query splits, and offline evaluation framework are complete.
-Search indexes, ranking models, the API, and the user interface have not been built yet.
+evaluation judgments, deterministic query splits, offline evaluation framework, and TF-IDF lexical
+baseline are complete. Dense/hybrid retrieval, ranking models, the API, and the user interface have
+not been built yet.
 
 ## Prepare WANDS data
 
@@ -18,12 +19,17 @@ uv run python -m product_search.data.download
 uv run python -m product_search.data.prepare
 uv run python -m product_search.evaluation.judgments
 uv run python -m product_search.evaluation.splits
+uv run python -m product_search.indexing.build_lexical
+uv run python -m product_search.retrieval.lexical "round coffee table"
+uv run python -m product_search.evaluation.benchmark_lexical
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
 Git. See [the data-source documentation](docs/data-source.md) for provenance, license, schemas,
 verified counts, and limitations. See [the evaluation documentation](docs/evaluation.md) for the
 canonical judgment policy, query partitions, metric definitions, evaluation modes, and reporting.
+See [the lexical baseline report](docs/lexical-baseline.md) for index configuration, measured
+validation metrics, latency, and error analysis.
 
 ## Development
 
