@@ -1,0 +1,21 @@
+random_seed = 42
+wands_repository = "wayfair/WANDS"
+default_top_k = 10
+
+[paths]
+raw_data = "data/raw"
+processed_data = "data/processed"
+indexes = "artifacts/indexes"
+embeddings = "artifacts/embeddings"
+models = "artifacts/models"
+reports = "artifacts/reports"
+
+[relevance_mapping]
+Exact = 2
+Partial = 1
+Irrelevant = 0
+
+[splits]
+train = 0.70
+validation = 0.15
+test = 0.15
