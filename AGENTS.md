@@ -52,9 +52,11 @@ that actually ran and their real results.
 
 ## Git workflow
 
-- Start each stage by checking status and the current branch; pull `main` only when a configured
-  remote is available and authentication already works.
-- Work on the requested feature branch and do not merge it automatically.
+- Use a single-branch workflow for the remainder of the project: work only on `main`, even when a
+  stage brief requests a feature branch.
+- Start each stage by checking status, confirming the current branch is `main`, and pulling `main`
+  when a configured remote is available and authentication already works.
+- Commit all stage work directly to `main`; do not create stage-specific feature branches.
 - Preserve unrelated user changes and review the diff before each commit.
 - Use small coherent commits with one of: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`,
   `ci:`, or `perf:`.
