@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "semantic-product-search-engine"
+version = "0.1.0"
+description = "A lightweight lexical, semantic, hybrid, and reranked product search engine"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Vijay Pratap Singh" }]
+dependencies = [
+    "joblib>=1.4,<2",
+    "numpy>=1.26,<3",
+    "pandas>=2.2,<3",
+    "pydantic>=2.8,<3",
+    "pydantic-settings>=2.4,<3",
+    "requests>=2.32,<3",
+    "scikit-learn>=1.5,<2",
+    "scipy>=1.13,<2",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11,<2",
+    "pre-commit>=3.8,<5",
+    "pytest>=8.3,<10",
+    "pytest-cov>=5,<8",
+    "ruff>=0.6,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/product_search"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+show_error_codes = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "--basetemp=.pytest_tmp",
+    "--cov=product_search",
+    "--cov-report=term-missing",
+    "--cov-fail-under=90",
+]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+branch = true
+source = ["product_search"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
