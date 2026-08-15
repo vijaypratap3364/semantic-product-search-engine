@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import tomllib
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -83,6 +83,27 @@ class SplitProportions(ImmutableModel):
         return self
 
 
+class LexicalSettings(ImmutableModel):
+    """Configurable, CPU-conscious TF-IDF baseline parameters."""
+
+    lowercase: bool = True
+    analyzer: Literal["word"] = "word"
+    ngram_min: int = Field(default=1, ge=1, le=3)
+    ngram_max: int = Field(default=2, ge=1, le=3)
+    sublinear_tf: bool = True
+    min_df: int = Field(default=2, ge=1)
+    max_features: int | None = Field(default=100_000, ge=1)
+    norm: Literal["l2"] = "l2"
+
+    @model_validator(mode="after")
+    def validate_ngram_range(self) -> Self:
+        """Require an ordered n-gram range."""
+
+        if self.ngram_min > self.ngram_max:
+            raise ValueError("lexical ngram_min must not exceed ngram_max")
+        return self
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -99,6 +120,7 @@ class ProjectSettings(BaseSettings):
     default_top_k: int = Field(gt=0, le=100)
     relevance_mapping: RelevanceMapping
     splits: SplitProportions
+    lexical: LexicalSettings
 
     def resolve_paths(self, project_root: Path) -> Self:
         """Return settings with all configured paths made absolute."""

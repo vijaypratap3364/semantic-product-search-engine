@@ -27,6 +27,11 @@ def test_load_base_configuration() -> None:
     assert settings.splits.train == pytest.approx(0.70)
     assert settings.splits.validation == pytest.approx(0.15)
     assert settings.splits.test == pytest.approx(0.15)
+    assert settings.lexical.ngram_min == 1
+    assert settings.lexical.ngram_max == 2
+    assert settings.lexical.min_df == 2
+    assert settings.lexical.max_features == 100_000
+    assert settings.lexical.norm == "l2"
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
@@ -64,6 +69,16 @@ def test_invalid_relevance_order_is_rejected() -> None:
     config["relevance_mapping"]["Exact"] = 0
 
     with pytest.raises(ValidationError, match="Exact > Partial > Irrelevant"):
+        ProjectSettings.model_validate(config)
+
+
+def test_invalid_lexical_ngram_range_is_rejected() -> None:
+    with BASE_CONFIG.open("rb") as config_file:
+        config = tomllib.load(config_file)
+    config["lexical"]["ngram_min"] = 3
+    config["lexical"]["ngram_max"] = 1
+
+    with pytest.raises(ValidationError, match="ngram_min must not exceed ngram_max"):
         ProjectSettings.model_validate(config)
 
 

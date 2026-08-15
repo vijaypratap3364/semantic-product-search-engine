@@ -19,3 +19,13 @@ Irrelevant = 0
 train = 0.70
 validation = 0.15
 test = 0.15
+
+[lexical]
+lowercase = true
+analyzer = "word"
+ngram_min = 1
+ngram_max = 2
+sublinear_tf = true
+min_df = 2
+max_features = 100000
+norm = "l2"
