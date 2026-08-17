@@ -37,7 +37,7 @@ def test_load_base_configuration() -> None:
     assert settings.dense.batch_size == 1
     assert settings.dense.normalization == "l2"
     assert settings.hybrid.strategy == "weighted_normalized"
-    assert settings.hybrid.semantic_weight == 0.5
+    assert settings.hybrid.semantic_weight == 0.9
     assert settings.hybrid.candidate_depth == 100
     assert settings.hybrid.rrf_k == 60
     assert settings.hybrid.semantic_weight_grid == pytest.approx(
