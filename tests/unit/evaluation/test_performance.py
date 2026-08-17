@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -213,7 +213,7 @@ def test_artifact_sizes_are_deterministic_and_missing_directories_fail(tmp_path:
 def test_process_memory_probe_is_supported_or_explicitly_unavailable() -> None:
     value = current_process_rss_bytes()
 
-    if os.name == "nt":
+    if sys.platform == "win32":
         assert value is not None
         assert value > 0
     else:

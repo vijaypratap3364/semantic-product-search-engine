@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import math
-import os
+import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from ctypes import wintypes
@@ -201,13 +201,9 @@ def collect_artifact_sizes(families: Mapping[str, Path]) -> dict[str, object]:
     return payload
 
 
-def current_process_rss_bytes() -> int | None:
-    """Return current Windows working-set bytes without adding psutil."""
+if sys.platform == "win32":
 
-    if os.name != "nt":
-        return None
-
-    class ProcessMemoryCounters(ctypes.Structure):
+    class _ProcessMemoryCounters(ctypes.Structure):
         _fields_ = [
             ("cb", wintypes.DWORD),
             ("PageFaultCount", wintypes.DWORD),
@@ -221,24 +217,36 @@ def current_process_rss_bytes() -> int | None:
             ("PeakPagefileUsage", ctypes.c_size_t),
         ]
 
-    counters = ProcessMemoryCounters()
-    counters.cb = ctypes.sizeof(counters)
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    psapi = ctypes.WinDLL("psapi", use_last_error=True)
-    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
-    psapi.GetProcessMemoryInfo.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(ProcessMemoryCounters),
-        wintypes.DWORD,
-    ]
-    psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
-    process = kernel32.GetCurrentProcess()
-    succeeded = psapi.GetProcessMemoryInfo(
-        process,
-        ctypes.byref(counters),
-        counters.cb,
-    )
-    return int(counters.WorkingSetSize) if succeeded else None
+    def _platform_process_rss_bytes() -> int | None:
+        counters = _ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(_ProcessMemoryCounters),
+            wintypes.DWORD,
+        ]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        process = kernel32.GetCurrentProcess()
+        succeeded = psapi.GetProcessMemoryInfo(
+            process,
+            ctypes.byref(counters),
+            counters.cb,
+        )
+        return int(counters.WorkingSetSize) if succeeded else None
+
+else:
+
+    def _platform_process_rss_bytes() -> int | None:
+        return None
+
+
+def current_process_rss_bytes() -> int | None:
+    """Return the Windows working set, or explicitly report unavailable elsewhere."""
+
+    return _platform_process_rss_bytes()
 
 
 def _exercise_operations(
