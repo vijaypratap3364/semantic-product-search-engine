@@ -52,6 +52,8 @@ def test_load_base_configuration() -> None:
     assert settings.analytics.database_path == (
         PROJECT_ROOT / "data" / "local" / "search_analytics.sqlite"
     )
+    assert settings.ui.api_base_url == "http://127.0.0.1:8000"
+    assert settings.ui.request_timeout_seconds == 30.0
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
@@ -139,6 +141,15 @@ def test_invalid_reranker_search_grid_is_rejected(
     config["reranker"][key] = value
 
     with pytest.raises(ValidationError, match=message):
+        ProjectSettings.model_validate(config)
+
+
+def test_invalid_ui_api_origin_is_rejected() -> None:
+    with BASE_CONFIG.open("rb") as config_file:
+        config = tomllib.load(config_file)
+    config["ui"]["api_base_url"] = "localhost:8000/"
+
+    with pytest.raises(ValidationError, match="must use http:// or https://"):
         ProjectSettings.model_validate(config)
 
 
