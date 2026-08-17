@@ -9,8 +9,8 @@ Implementation is in progress. The repository foundation, reproducible WANDS ing
 evaluation judgments, deterministic query splits, offline evaluation framework, TF-IDF lexical
 baseline, dense semantic retrieval, validation-tuned hybrid retrieval, and a train-only lightweight
 relevance reranker are complete. The frozen one-time held-out test evaluation is also complete; the
-artifact-verified Python search service is complete. The API and user interface have not been built
-yet.
+artifact-verified Python search service and FastAPI search API are complete. The user interface has
+not been built yet.
 
 ## Prepare WANDS data
 
@@ -34,6 +34,7 @@ uv run python -m product_search.evaluation.benchmark_reranker --local-files-only
 uv run python -m product_search.evaluation.benchmark_final --verify-only --local-files-only
 uv run python -m product_search.evaluation.benchmark_final --local-files-only
 uv run python -m product_search.service "round coffee table" --mode default --top-k 10
+uv run uvicorn product_search.api.main:app --reload
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
@@ -49,6 +50,8 @@ The [search model card](docs/search-model-card.md) records the frozen held-out c
 default, latency boundary, hardware, limitations, failure modes, biases, and unjudged-product
 caveat. See [the service-layer documentation](docs/service.md) for the Python interface, artifact
 validation, response contract, deterministic explanations, and measured startup/query latency.
+See [the API documentation](docs/api.md) for endpoints, validation limits, safe error responses,
+and the local development command.
 
 ## Development
 
