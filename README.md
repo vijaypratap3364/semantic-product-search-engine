@@ -33,6 +33,7 @@ uv run python -m product_search.evaluation.benchmark_hybrid --local-files-only
 uv run python -m product_search.evaluation.benchmark_reranker --local-files-only --force
 uv run python -m product_search.evaluation.benchmark_final --verify-only --local-files-only
 uv run python -m product_search.evaluation.benchmark_final --local-files-only
+uv run python -m product_search.evaluation.benchmark_performance --local-files-only
 uv run python -m product_search.service "round coffee table" --mode default --top-k 10
 uv run uvicorn product_search.api.main:app --reload
 ```
@@ -61,6 +62,9 @@ and the local development command. See [the analytics documentation](docs/analyt
 local-only privacy boundary, database schema, feedback contract, and query-logging toggle.
 See [the dashboard guide](docs/dashboard.md) for the two-process local demo, comparison mode,
 feedback controls, benchmark provenance, and UI failure behavior.
+See [the performance analysis](docs/performance.md) for the bounded benchmark protocol, measured
+component/API latency, memory and disk usage, profile-guided optimization, factual error categories,
+and exact-search scaling boundary.
 
 ## Development
 
