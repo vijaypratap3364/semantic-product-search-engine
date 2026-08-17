@@ -19,9 +19,11 @@ from product_search.indexing.dense import build_dense_index
 from product_search.indexing.tfidf import build_tfidf_index
 from product_search.ranking.features import FEATURE_NAMES
 from product_search.ranking.model import save_relevance_model, train_relevance_model
+from product_search.retrieval.base import SearchResult
 from product_search.retrieval.lexical import LexicalSearchEngine
 from product_search.retrieval.semantic import SemanticSearchEngine
 from product_search.service import (
+    ProductDisplayRecord,
     ProductSearchResult,
     SearchExplanation,
     SearchModeUnavailableError,
@@ -71,6 +73,7 @@ def _write_selection(
     *,
     selected_mode: str,
     include_reranker: bool,
+    hybrid_strategy: str = "weighted_normalized",
 ) -> Path:
     products_path = settings.paths.processed_data / "products.parquet"
     lexical_metadata = settings.paths.indexes / "tfidf" / "metadata.json"
@@ -87,7 +90,7 @@ def _write_selection(
             "embedding_dimension": 384,
         },
         "hybrid": {
-            "strategy": "weighted_normalized",
+            "strategy": hybrid_strategy,
             "semantic_weight": 0.9,
             "candidate_depth": 100,
             "rrf_k": 60,
@@ -123,6 +126,7 @@ def _build_fixture(
     tmp_path: Path,
     *,
     selected_mode: str = "hybrid",
+    hybrid_strategy: str = "weighted_normalized",
 ) -> tuple[ProjectSettings, FakeEmbeddingProvider, Path]:
     settings = load_settings(project_root=tmp_path)
     products_path = settings.paths.processed_data / "products.parquet"
@@ -195,6 +199,7 @@ def _build_fixture(
         settings,
         selected_mode=selected_mode,
         include_reranker=selected_mode == "reranker",
+        hybrid_strategy=hybrid_strategy,
     )
     return settings, provider, selection_path
 
@@ -298,14 +303,49 @@ def test_service_rejects_invalid_inputs_and_unavailable_reranker(tmp_path: Path)
 
     with pytest.raises(ValueError, match="must not be blank"):
         service.search(" ")
+    with pytest.raises(TypeError, match="query must be a string"):
+        service.search(None)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="between 1 and 100"):
         service.search("coffee", top_k=101)
+    with pytest.raises(ValueError, match="between 1 and 100"):
+        service.search("coffee", top_k=True)
     with pytest.raises(ValueError, match="unsupported search mode"):
         service.search("coffee", mode="other")
+    with pytest.raises(TypeError, match="mode must be a string"):
+        service.search("coffee", mode=None)  # type: ignore[arg-type]
     with pytest.raises(SearchModeUnavailableError, match="unavailable"):
         service.search("coffee", mode="rerank")
     with pytest.raises(ValueError, match="positive integer"):
         service.benchmark("coffee", runs=0)
+
+    class MissingComponentsEngine:
+        def search(self, query: str, top_k: int) -> list[SearchResult]:
+            return [SearchResult(product_id="p1", rank=1, score=0.5, score_components={})]
+
+    malformed_service = SearchService(
+        products={"p1": ProductDisplayRecord("p1", "Table", None, None, None)},
+        engines={"hybrid": MissingComponentsEngine()},
+        default_mode="hybrid",
+        fusion_strategy="weighted_normalized",
+        semantic_weight=0.9,
+        initialization_time_ms=1.0,
+        selection_sha256="selection-hash",
+    )
+    with pytest.raises(SearchServiceStartupError, match="lacks required score component"):
+        malformed_service.search("coffee")
+
+
+def test_service_reports_rrf_rank_contributions(tmp_path: Path) -> None:
+    settings, provider, _ = _build_fixture(tmp_path, hybrid_strategy="rrf")
+    service = SearchService.load(settings, embedding_provider=provider)
+
+    result = service.search("coffee table", top_k=1, mode="hybrid").results[0]
+
+    assert result.explanation.lexical_contribution is not None
+    assert result.explanation.semantic_contribution is not None
+    assert result.final_score == pytest.approx(
+        result.explanation.lexical_contribution + result.explanation.semantic_contribution
+    )
 
 
 def test_service_missing_artifact_error_names_build_command(tmp_path: Path) -> None:
