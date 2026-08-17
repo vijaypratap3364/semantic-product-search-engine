@@ -110,6 +110,7 @@ def _write_selection(
     encoded = json.dumps(immutable, sort_keys=True, separators=(",", ":")).encode("utf-8")
     system = "reranked_hybrid" if selected_mode == "reranker" else selected_mode
     payload = {
+        "created_at": "2026-08-16T12:00:00+00:00",
         "schema_version": 1,
         "system": system,
         "selected_search_mode": selected_mode,
@@ -291,6 +292,11 @@ def test_service_loads_selected_reranker_and_resolves_default(tmp_path: Path) ->
 
     assert service.default_mode == "rerank"
     assert service.available_modes[-1] == "rerank"
+    assert service.metadata.default_search_mode == "rerank"
+    assert service.metadata.embedding_model == "BAAI/bge-small-en-v1.5"
+    assert service.metadata.product_count == 3
+    assert len(service.metadata.artifact_version) == 64
+    assert service.metadata.build_timestamp == "2026-08-16T12:00:00+00:00"
     assert response.resolved_mode == "rerank"
     assert len(response.results) == 2
     assert all(result.lexical_score is not None for result in response.results)
@@ -330,6 +336,9 @@ def test_service_rejects_invalid_inputs_and_unavailable_reranker(tmp_path: Path)
         semantic_weight=0.9,
         initialization_time_ms=1.0,
         selection_sha256="selection-hash",
+        embedding_model="fake/model",
+        artifact_version="artifact-version",
+        build_timestamp="2026-08-16T12:00:00+00:00",
     )
     with pytest.raises(SearchServiceStartupError, match="lacks required score component"):
         malformed_service.search("coffee")
