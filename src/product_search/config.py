@@ -135,6 +135,33 @@ class HybridSettings(ImmutableModel):
         return self
 
 
+class RerankerSettings(ImmutableModel):
+    """Small validation-selected logistic relevance model settings."""
+
+    candidate_depth: int = Field(default=100, ge=10, le=1_000)
+    c_grid: tuple[float, ...] = (0.1, 1.0, 10.0)
+    class_weight_options: tuple[Literal["none", "balanced"], ...] = (
+        "none",
+        "balanced",
+    )
+    max_iter: int = Field(default=500, ge=100, le=10_000)
+    default_search_mode: Literal["hybrid", "reranker"] = "hybrid"
+
+    @model_validator(mode="after")
+    def validate_search_grid(self) -> Self:
+        """Require small, deterministic, positive model-selection grids."""
+
+        if not self.c_grid or any(not math.isfinite(value) or value <= 0 for value in self.c_grid):
+            raise ValueError("reranker c_grid must contain positive finite values")
+        if tuple(sorted(set(self.c_grid))) != self.c_grid:
+            raise ValueError("reranker c_grid must be unique and ascending")
+        if not self.class_weight_options:
+            raise ValueError("reranker class_weight_options must not be empty")
+        if len(set(self.class_weight_options)) != len(self.class_weight_options):
+            raise ValueError("reranker class_weight_options must be unique")
+        return self
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -154,6 +181,7 @@ class ProjectSettings(BaseSettings):
     lexical: LexicalSettings
     dense: DenseSettings
     hybrid: HybridSettings
+    reranker: RerankerSettings
 
     def resolve_paths(self, project_root: Path) -> Self:
         """Return settings with all configured paths made absolute."""

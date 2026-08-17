@@ -170,6 +170,12 @@ def fuse_rankings(
         components = {
             "lexical_raw": lexical_raw.get(product_id, MISSING_MODALITY_VALUE),
             "semantic_raw": semantic_raw.get(product_id, MISSING_MODALITY_VALUE),
+            "lexical_rank": float(
+                lexical_by_id[product_id].rank if product_id in lexical_by_id else 0
+            ),
+            "semantic_rank": float(
+                semantic_by_id[product_id].rank if product_id in semantic_by_id else 0
+            ),
             "lexical_normalized": lexical_value,
             "semantic_normalized": semantic_value,
             "lexical_rrf": lexical_rrf,

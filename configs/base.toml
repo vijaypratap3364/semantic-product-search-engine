@@ -42,3 +42,10 @@ semantic_weight = 0.9
 candidate_depth = 100
 rrf_k = 60
 semantic_weight_grid = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+[reranker]
+candidate_depth = 100
+c_grid = [0.1, 1.0, 10.0]
+class_weight_options = ["none", "balanced"]
+max_iter = 500
+default_search_mode = "hybrid"
