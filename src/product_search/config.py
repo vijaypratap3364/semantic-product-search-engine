@@ -113,6 +113,28 @@ class DenseSettings(ImmutableModel):
     normalization: Literal["l2"] = "l2"
 
 
+class HybridSettings(ImmutableModel):
+    """Interpretable lexical/semantic fusion settings."""
+
+    strategy: Literal["weighted_normalized", "rrf"] = "weighted_normalized"
+    semantic_weight: float = Field(default=0.5, ge=0.0, le=1.0)
+    candidate_depth: int = Field(default=100, ge=1, le=10_000)
+    rrf_k: int = Field(default=60, ge=1)
+    semantic_weight_grid: tuple[float, ...] = tuple(index / 10 for index in range(11))
+
+    @model_validator(mode="after")
+    def validate_weight_grid(self) -> Self:
+        """Require a unique, ascending, bounded, interpretable search grid."""
+
+        if not self.semantic_weight_grid:
+            raise ValueError("hybrid semantic_weight_grid must not be empty")
+        if any(weight < 0.0 or weight > 1.0 for weight in self.semantic_weight_grid):
+            raise ValueError("hybrid semantic weights must be between 0.0 and 1.0")
+        if tuple(sorted(set(self.semantic_weight_grid))) != self.semantic_weight_grid:
+            raise ValueError("hybrid semantic_weight_grid must be unique and ascending")
+        return self
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -131,6 +153,7 @@ class ProjectSettings(BaseSettings):
     splits: SplitProportions
     lexical: LexicalSettings
     dense: DenseSettings
+    hybrid: HybridSettings
 
     def resolve_paths(self, project_root: Path) -> Self:
         """Return settings with all configured paths made absolute."""
