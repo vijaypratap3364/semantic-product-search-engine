@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from pandas import DataFrame
 
+from product_search.ranking import reranker as reranker_module
 from product_search.ranking.features import FEATURE_NAMES, ProductFeatureStore
 from product_search.ranking.reranker import RerankingSearchEngine
 from product_search.retrieval.base import SearchResult
@@ -117,3 +118,93 @@ def test_reranker_rejects_invalid_candidates_and_top_k() -> None:
         engine.search_candidates("query", ["p1", "p1"], 2)
     with pytest.raises(ValueError, match="positive integer"):
         engine.search("query", 0)
+    with pytest.raises(ValueError, match="positive integer"):
+        RerankingSearchEngine(
+            StaticHybridEngine([]), ReverseLexicalScorer(), _store(), candidate_depth=0
+        )
+
+    noncontiguous = [_candidate("p1", 1, 0.9), _candidate("p2", 2, 0.1)]
+    noncontiguous[1] = SearchResult(
+        product_id="p2",
+        rank=3,
+        score=noncontiguous[1].score,
+        score_components=noncontiguous[1].score_components,
+    )
+    with pytest.raises(ValueError, match="contiguous"):
+        RerankingSearchEngine(
+            StaticHybridEngine(noncontiguous),
+            ReverseLexicalScorer(),
+            _store(),
+            candidate_depth=2,
+        ).search("query", 2)
+
+
+def test_reranker_empty_full_search_returns_empty() -> None:
+    engine = RerankingSearchEngine(
+        StaticHybridEngine([]), ReverseLexicalScorer(), _store(), candidate_depth=10
+    )
+
+    assert engine.search("query", 5) == []
+
+
+def test_reranker_cli_wires_verified_artifacts(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    provider = object()
+    lexical = object()
+    semantic = object()
+    hybrid = object()
+    model = object()
+    store = _store()
+    captured: dict[str, object] = {}
+    output = SearchResult("p1", 1, 1.5, {"reranker_expected_relevance": 1.5})
+
+    monkeypatch.setattr(
+        reranker_module.ProductFeatureStore,
+        "from_parquet",
+        lambda *args, **kwargs: store,
+    )
+    monkeypatch.setattr(
+        reranker_module,
+        "load_relevance_model",
+        lambda *args, **kwargs: model,
+    )
+    monkeypatch.setattr(
+        reranker_module,
+        "FastEmbedProvider",
+        lambda *args, **kwargs: provider,
+    )
+    monkeypatch.setattr(
+        reranker_module.LexicalSearchEngine,
+        "from_index_dir",
+        lambda *args, **kwargs: lexical,
+    )
+    monkeypatch.setattr(
+        reranker_module.SemanticSearchEngine,
+        "from_index_dir",
+        lambda *args, **kwargs: semantic,
+    )
+    monkeypatch.setattr(
+        reranker_module,
+        "HybridSearchEngine",
+        lambda *args, **kwargs: hybrid,
+    )
+
+    class FakeReranker:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            captured["constructor_args"] = args
+            captured["constructor_kwargs"] = kwargs
+
+        def search(self, query: str, top_k: int) -> list[SearchResult]:
+            captured["query"] = query
+            captured["top_k"] = top_k
+            return [output]
+
+    monkeypatch.setattr(reranker_module, "RerankingSearchEngine", FakeReranker)
+
+    assert reranker_module.main(["round table", "--top-k", "1", "--local-files-only"]) == 0
+    assert captured["constructor_args"] == (hybrid, model, store)
+    assert captured["query"] == "round table"
+    assert captured["top_k"] == 1
+    assert '"reranker_expected_relevance": 1.5' in capsys.readouterr().out

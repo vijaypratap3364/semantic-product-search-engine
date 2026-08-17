@@ -12,6 +12,7 @@ import pytest
 from product_search.ranking.features import FEATURE_NAMES
 from product_search.ranking.model import (
     MODEL_FILENAME,
+    RelevanceModel,
     RerankerArtifactError,
     load_relevance_model,
     probability_to_expected_relevance,
@@ -30,7 +31,7 @@ def _training_data() -> tuple[np.ndarray, np.ndarray]:
     return np.asarray(rows, dtype=np.float64), np.asarray(labels, dtype=np.int64)
 
 
-def _model() -> object:
+def _model() -> RelevanceModel:
     features, labels = _training_data()
     return train_relevance_model(
         features,
@@ -82,7 +83,7 @@ def test_model_serialization_round_trip_and_metadata(tmp_path: Path) -> None:
     model = _model()
     model_dir = tmp_path / "reranker"
     metadata = save_relevance_model(
-        model,  # type: ignore[arg-type]
+        model,
         model_dir,
         product_dataset_sha256="products-hash",
         source_hashes={"query_splits.json": "splits-hash"},
@@ -100,7 +101,7 @@ def test_model_serialization_round_trip_and_metadata(tmp_path: Path) -> None:
 
     np.testing.assert_allclose(
         loaded.predict_expected_relevance(features),
-        model.predict_expected_relevance(features),  # type: ignore[union-attr]
+        model.predict_expected_relevance(features),
     )
     assert metadata["created_at"] == "2026-08-16T12:00:00+00:00"
     assert metadata["feature_names"] == list(FEATURE_NAMES)
@@ -108,7 +109,7 @@ def test_model_serialization_round_trip_and_metadata(tmp_path: Path) -> None:
     assert len(metadata["artifacts"][MODEL_FILENAME]["sha256"]) == 64
     with pytest.raises(FileExistsError, match="force=True"):
         save_relevance_model(
-            model,  # type: ignore[arg-type]
+            model,
             model_dir,
             product_dataset_sha256="products-hash",
             source_hashes={},
@@ -122,7 +123,7 @@ def test_model_load_rejects_corruption_and_incompatible_metadata(tmp_path: Path)
     model = _model()
     model_dir = tmp_path / "reranker"
     save_relevance_model(
-        model,  # type: ignore[arg-type]
+        model,
         model_dir,
         product_dataset_sha256="products-hash",
         source_hashes={},
@@ -142,7 +143,7 @@ def test_model_load_rejects_corruption_and_incompatible_metadata(tmp_path: Path)
 
     schema_dir = tmp_path / "schema-mismatch"
     save_relevance_model(
-        model,  # type: ignore[arg-type]
+        model,
         schema_dir,
         product_dataset_sha256="products-hash",
         source_hashes={},
@@ -164,6 +165,8 @@ def test_model_load_rejects_corruption_and_incompatible_metadata(tmp_path: Path)
         ([0] * 12, {}, "must contain"),
         ([0, 1, 2] * 4, {"c_value": 0.0}, "positive and finite"),
         ([0, 1, 2] * 4, {"class_weight": "invalid"}, "unsupported class weight"),
+        ([0, 1, 2] * 4, {"max_iter": 0}, "max_iter must be"),
+        ([0, 1, 2] * 4, {"candidate_depth": 0}, "candidate_depth must be"),
     ],
 )
 def test_model_training_rejects_invalid_inputs(
@@ -180,3 +183,106 @@ def test_model_training_rejects_invalid_inputs(
     }
     with pytest.raises(ValueError, match=message):
         train_relevance_model(features, labels, **parameters)  # type: ignore[arg-type]
+
+
+def test_model_rejects_misaligned_labels_and_invalid_feature_matrices() -> None:
+    features, labels = _training_data()
+    with pytest.raises(ValueError, match="one-to-one"):
+        train_relevance_model(
+            features,
+            labels[:-1],
+            c_value=1.0,
+            class_weight="none",
+            max_iter=500,
+            random_seed=42,
+            candidate_depth=100,
+        )
+    model = _model()
+    with pytest.raises(ValueError, match="shape"):
+        model.predict_probabilities(np.ones((2, 2), dtype=np.float64))
+    invalid = np.ones((1, len(FEATURE_NAMES)), dtype=np.float64)
+    invalid[0, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        model.predict_probabilities(invalid)
+    with pytest.raises(ValueError, match="one column"):
+        probability_to_expected_relevance(np.asarray([[0.5, 0.5]], dtype=np.float64), (0, 1, 2))
+    with pytest.raises(ValueError, match="non-negative"):
+        probability_to_expected_relevance(
+            np.asarray([[-0.1, 0.5, 0.6]], dtype=np.float64), (0, 1, 2)
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("schema_version", 99, "unsupported reranker metadata schema"),
+        ("feature_schema_version", 99, "feature schema version"),
+        ("feature_schema_sha256", "wrong", "feature schema hash"),
+        ("model_type", "other", "unsupported reranker model type"),
+    ],
+)
+def test_model_load_rejects_incompatible_metadata_contracts(
+    tmp_path: Path,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    model_dir = tmp_path / field
+    save_relevance_model(
+        _model(),
+        model_dir,
+        product_dataset_sha256="products-hash",
+        source_hashes={},
+        train_query_count=3,
+        training_row_count=12,
+        class_distribution={0: 4, 1: 4, 2: 4},
+    )
+    metadata_path = model_dir / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata[field] = value
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    with pytest.raises(RerankerArtifactError, match=message):
+        load_relevance_model(model_dir)
+
+
+def test_model_load_rejects_unreadable_missing_and_mismatched_artifacts(tmp_path: Path) -> None:
+    invalid_dir = tmp_path / "invalid-json"
+    invalid_dir.mkdir()
+    (invalid_dir / "metadata.json").write_text("{invalid", encoding="utf-8")
+    with pytest.raises(RerankerArtifactError, match="unable to read"):
+        load_relevance_model(invalid_dir)
+
+    model_dir = tmp_path / "missing-field"
+    save_relevance_model(
+        _model(),
+        model_dir,
+        product_dataset_sha256="products-hash",
+        source_hashes={},
+        train_query_count=3,
+        training_row_count=12,
+        class_distribution={0: 4, 1: 4, 2: 4},
+    )
+    metadata_path = model_dir / "metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    del metadata["classes"]
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(RerankerArtifactError, match="missing fields"):
+        load_relevance_model(model_dir)
+
+    hash_dir = tmp_path / "hash"
+    save_relevance_model(
+        _model(),
+        hash_dir,
+        product_dataset_sha256="products-hash",
+        source_hashes={},
+        train_query_count=3,
+        training_row_count=12,
+        class_distribution={0: 4, 1: 4, 2: 4},
+    )
+    hash_metadata_path = hash_dir / "metadata.json"
+    hash_metadata = json.loads(hash_metadata_path.read_text(encoding="utf-8"))
+    hash_metadata["artifacts"][MODEL_FILENAME]["sha256"] = "0" * 64
+    hash_metadata_path.write_text(json.dumps(hash_metadata), encoding="utf-8")
+    with pytest.raises(RerankerArtifactError, match="SHA-256 mismatch"):
+        load_relevance_model(hash_dir)
