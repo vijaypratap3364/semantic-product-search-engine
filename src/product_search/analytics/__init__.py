@@ -1,1 +1,1 @@
-"""SQLite-backed query and feedback analytics."""
+"""Local SQLite-backed query and feedback analytics."""

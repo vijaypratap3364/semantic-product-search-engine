@@ -162,6 +162,23 @@ class RerankerSettings(ImmutableModel):
         return self
 
 
+class AnalyticsSettings(ImmutableModel):
+    """Privacy-conscious local SQLite analytics settings."""
+
+    query_logging_enabled: bool = True
+    database_path: Path = Path("data/local/search_analytics.sqlite")
+
+    def resolve_against(self, project_root: Path) -> Self:
+        """Return the database path made absolute relative to ``project_root``."""
+
+        database_path = (
+            self.database_path
+            if self.database_path.is_absolute()
+            else (project_root / self.database_path).resolve()
+        )
+        return self.model_copy(update={"database_path": database_path})
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -174,6 +191,7 @@ class ProjectSettings(BaseSettings):
 
     random_seed: int = Field(ge=0)
     wands_repository: str = Field(min_length=1)
+    analytics: AnalyticsSettings
     paths: ProjectPaths
     default_top_k: int = Field(gt=0, le=100)
     relevance_mapping: RelevanceMapping
@@ -186,7 +204,13 @@ class ProjectSettings(BaseSettings):
     def resolve_paths(self, project_root: Path) -> Self:
         """Return settings with all configured paths made absolute."""
 
-        return self.model_copy(update={"paths": self.paths.resolve_against(project_root.resolve())})
+        root = project_root.resolve()
+        return self.model_copy(
+            update={
+                "analytics": self.analytics.resolve_against(root),
+                "paths": self.paths.resolve_against(root),
+            }
+        )
 
 
 def _read_toml(config_path: Path) -> dict[str, Any]:

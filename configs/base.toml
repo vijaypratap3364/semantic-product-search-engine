@@ -2,6 +2,10 @@ random_seed = 42
 wands_repository = "wayfair/WANDS"
 default_top_k = 10
 
+[analytics]
+query_logging_enabled = true
+database_path = "data/local/search_analytics.sqlite"
+
 [paths]
 raw_data = "data/raw"
 processed_data = "data/processed"
