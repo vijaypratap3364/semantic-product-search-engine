@@ -6,6 +6,10 @@ default_top_k = 10
 query_logging_enabled = true
 database_path = "data/local/search_analytics.sqlite"
 
+[ui]
+api_base_url = "http://127.0.0.1:8000"
+request_timeout_seconds = 30.0
+
 [paths]
 raw_data = "data/raw"
 processed_data = "data/processed"

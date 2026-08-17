@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -179,6 +179,25 @@ class AnalyticsSettings(ImmutableModel):
         return self.model_copy(update={"database_path": database_path})
 
 
+class UiSettings(ImmutableModel):
+    """Local Streamlit-to-FastAPI connection settings."""
+
+    api_base_url: str = "http://127.0.0.1:8000"
+    request_timeout_seconds: float = Field(default=30.0, gt=0.0, le=120.0)
+
+    @field_validator("api_base_url")
+    @classmethod
+    def validate_api_base_url(cls, value: str) -> str:
+        """Require an explicit HTTP(S) origin without a trailing slash."""
+
+        normalized = value.strip().rstrip("/")
+        if not normalized.startswith(("http://", "https://")):
+            raise ValueError("ui api_base_url must use http:// or https://")
+        if normalized in {"http:", "https:"}:
+            raise ValueError("ui api_base_url must include a host")
+        return normalized
+
+
 class ProjectSettings(BaseSettings):
     """Validated settings shared by offline and online project components."""
 
@@ -192,6 +211,7 @@ class ProjectSettings(BaseSettings):
     random_seed: int = Field(ge=0)
     wands_repository: str = Field(min_length=1)
     analytics: AnalyticsSettings
+    ui: UiSettings
     paths: ProjectPaths
     default_top_k: int = Field(gt=0, le=100)
     relevance_mapping: RelevanceMapping
