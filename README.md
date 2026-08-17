@@ -1,5 +1,7 @@
 # Semantic Product Search Engine
 
+[![CI](https://github.com/vijaypratap3364/semantic-product-search-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vijaypratap3364/semantic-product-search-engine/actions/workflows/ci.yml)
+
 A portfolio-quality, CPU-friendly product search system built on the official Wayfair WANDS
 catalog. The project will compare TF-IDF lexical retrieval, dense semantic retrieval, hybrid
 retrieval, and a lightweight supervised relevance reranker under a shared offline evaluation
@@ -65,6 +67,8 @@ feedback controls, benchmark provenance, and UI failure behavior.
 See [the performance analysis](docs/performance.md) for the bounded benchmark protocol, measured
 component/API latency, memory and disk usage, profile-guided optimization, factual error categories,
 and exact-search scaling boundary.
+See [the continuous-integration guide](docs/continuous-integration.md) for the fixture-only GitHub
+Actions contract, offline model/data safeguards, coverage threshold, and matching local commands.
 
 ## Development
 
