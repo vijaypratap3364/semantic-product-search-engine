@@ -1,1 +1,1 @@
-"""Streamlit presentation layer introduced in a later stage."""
+"""Streamlit presentation client for the local FastAPI search service."""
