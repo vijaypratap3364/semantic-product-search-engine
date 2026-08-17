@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from pandas import DataFrame
+from scipy.sparse import csr_matrix
 
 from product_search.config import LexicalSettings
 from product_search.indexing.tfidf import build_tfidf_index
@@ -50,6 +51,19 @@ def test_search_orders_results_by_sparse_similarity(lexical_engine: LexicalSearc
     assert results[1].score == results[2].score
     assert results[0].score_components == {"lexical": results[0].score}
     assert lexical_engine.product_ids == ("p0", "p1", "p2", "p3")
+
+
+def test_full_catalog_search_does_not_transpose_the_product_matrix_per_query(
+    lexical_engine: LexicalSearchEngine,
+) -> None:
+    class NoTransposeCsr(csr_matrix):
+        @property
+        def T(self) -> csr_matrix:
+            raise AssertionError("full-catalog search must not transpose the CSR product matrix")
+
+    lexical_engine._product_matrix = NoTransposeCsr(lexical_engine._product_matrix)
+
+    assert lexical_engine.search("round coffee table", top_k=1)[0].product_id == "p1"
 
 
 def test_candidate_search_ranks_only_supplied_ids_and_retains_zero_scores(

@@ -48,10 +48,12 @@ class LexicalSearchEngine:
         if query_matrix is None:
             return []
 
-        similarities = cast(csr_matrix, (query_matrix @ self._product_matrix.T).tocsr())
-        similarities.eliminate_zeros()
-        rows = similarities.indices.astype(np.int64, copy=False)
-        scores = similarities.data.astype(np.float64, copy=False)
+        # The product matrix is already CSR. Multiplying it by a dense query vector avoids
+        # converting its large transpose on every request while keeping the product matrix sparse.
+        query_vector = query_matrix.toarray().reshape(-1).astype(np.float32, copy=False)
+        similarities = np.asarray(self._product_matrix @ query_vector, dtype=np.float32)
+        rows = np.flatnonzero(similarities).astype(np.int64, copy=False)
+        scores = similarities[rows].astype(np.float64, copy=False)
         if scores.size == 0:
             return []
         selected_positions = _select_top_positions(
