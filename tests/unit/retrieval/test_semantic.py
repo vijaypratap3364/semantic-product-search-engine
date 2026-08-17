@@ -86,9 +86,28 @@ def test_semantic_candidate_search_and_top_k(semantic_engine: SemanticSearchEngi
     assert len(semantic_engine.search("query-a", top_k=99)) == 4
 
 
+def test_query_embedding_and_retrieval_can_be_profiled_separately(
+    semantic_engine: SemanticSearchEngine,
+) -> None:
+    embedding = semantic_engine.embed_query("query-a")
+
+    assert embedding is not None
+    assert np.linalg.norm(embedding) == pytest.approx(1.0)
+    direct = semantic_engine.search_embedding(embedding, top_k=3)
+    assert direct == semantic_engine.search("query-a", top_k=3)
+
+    with pytest.raises(ValueError, match="shape"):
+        semantic_engine.search_embedding(np.ones(2, dtype=np.float32), top_k=1)
+    invalid = embedding.copy()
+    invalid[0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        semantic_engine.search_embedding(invalid, top_k=1)
+
+
 def test_empty_query_returns_no_results(semantic_engine: SemanticSearchEngine) -> None:
     assert semantic_engine.search("   ", top_k=10) == []
     assert semantic_engine.search_candidates("", ["p1"], top_k=10) == []
+    assert semantic_engine.embed_query(" ") is None
 
 
 @pytest.mark.parametrize("top_k", [0, -1, True])

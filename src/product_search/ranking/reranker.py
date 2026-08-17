@@ -48,7 +48,7 @@ class RerankingSearchEngine:
 
         _validate_top_k(top_k)
         candidates = self._candidate_engine.search(query, max(top_k, self.candidate_depth))
-        return self._rerank(query, candidates, top_k)
+        return self.rerank(query, candidates, top_k)
 
     def search_candidates(
         self,
@@ -66,14 +66,17 @@ class RerankingSearchEngine:
             return []
         depth = min(max(top_k, self.candidate_depth), len(normalized_ids))
         candidates = self._candidate_engine.search_candidates(query, normalized_ids, depth)
-        return self._rerank(query, candidates, top_k)
+        return self.rerank(query, candidates, top_k)
 
-    def _rerank(
+    def rerank(
         self,
         query: str,
         candidates: Sequence[SearchResult],
         top_k: int,
     ) -> list[SearchResult]:
+        """Rerank an existing candidate pool, isolating second-stage work for profiling."""
+
+        _validate_top_k(top_k)
         if not candidates:
             return []
         _validate_candidates(candidates)

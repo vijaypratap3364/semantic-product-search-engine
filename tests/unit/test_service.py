@@ -274,6 +274,10 @@ def test_service_loads_artifacts_once_and_exposes_display_safe_modes(
     assert not hasattr(default_response.results[0], "product_features")
     assert lexical_response.results[0].semantic_score is None
     assert semantic_response.results[0].lexical_score is None
+    assert isinstance(service.loaded_engine("lexical"), LexicalSearchEngine)
+    assert isinstance(service.loaded_engine("semantic"), SemanticSearchEngine)
+    with pytest.raises(SearchModeUnavailableError, match="not loaded"):
+        service.loaded_engine("rerank")
 
     benchmark, final_response = service.benchmark("desk lamp", mode="semantic", top_k=1, runs=3)
     assert benchmark.sample_count == 3

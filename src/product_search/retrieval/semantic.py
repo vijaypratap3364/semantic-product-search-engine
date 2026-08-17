@@ -74,10 +74,47 @@ class SemanticSearchEngine:
         """Embed one query and partially select its highest full-catalog dot products."""
 
         _validate_top_k(top_k)
-        query_vector = self._embed_query(query)
+        query_vector = self.embed_query(query)
         if query_vector is None:
             return []
-        scores = np.asarray(self._embeddings @ query_vector, dtype=np.float32)
+        return self.search_embedding(query_vector, top_k)
+
+    def embed_query(self, query: str) -> NDArray[np.float32] | None:
+        """Encode and L2-normalize one query for reproducible component profiling."""
+
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        if not query.strip():
+            return None
+        vectors = list(self._provider.embed_queries([query], batch_size=1))
+        if len(vectors) != 1:
+            raise ValueError(f"embedding provider returned {len(vectors)} vectors for one query")
+        vector = np.asarray(vectors[0], dtype=np.float32)
+        if vector.ndim != 1:
+            raise ValueError("query embedding must be one-dimensional")
+        normalized = normalize_embeddings(
+            vector.reshape(1, -1),
+            expected_dimension=self.metadata["embedding_dimension"],
+        )
+        return cast(NDArray[np.float32], normalized[0])
+
+    def search_embedding(
+        self,
+        query_vector: NDArray[np.float32],
+        top_k: int,
+    ) -> list[SearchResult]:
+        """Search with an already encoded query, isolating exact retrieval latency."""
+
+        _validate_top_k(top_k)
+        vector = np.asarray(query_vector, dtype=np.float32)
+        expected_dimension = int(self.metadata["embedding_dimension"])
+        if vector.ndim != 1 or vector.shape[0] != expected_dimension:
+            raise ValueError(
+                f"query embedding must have shape ({expected_dimension},); got {vector.shape}"
+            )
+        if not np.isfinite(vector).all():
+            raise ValueError("query embedding must contain only finite values")
+        scores = np.asarray(self._embeddings @ vector, dtype=np.float32)
         limit = min(top_k, len(self._product_ids))
         selected_positions = _select_top_positions(scores, self._product_ids, limit)
         return [
@@ -106,7 +143,7 @@ class SemanticSearchEngine:
             raise ValueError(f"candidate products are absent from the dense index: {unknown[:5]}")
         if not normalized_ids:
             return []
-        query_vector = self._embed_query(query)
+        query_vector = self.embed_query(query)
         if query_vector is None:
             return []
         rows = np.asarray(
@@ -124,23 +161,6 @@ class SemanticSearchEngine:
             )
             for rank, position in enumerate(selected_positions, start=1)
         ]
-
-    def _embed_query(self, query: str) -> NDArray[np.float32] | None:
-        if not isinstance(query, str):
-            raise TypeError("query must be a string")
-        if not query.strip():
-            return None
-        vectors = list(self._provider.embed_queries([query], batch_size=1))
-        if len(vectors) != 1:
-            raise ValueError(f"embedding provider returned {len(vectors)} vectors for one query")
-        vector = np.asarray(vectors[0], dtype=np.float32)
-        if vector.ndim != 1:
-            raise ValueError("query embedding must be one-dimensional")
-        normalized = normalize_embeddings(
-            vector.reshape(1, -1),
-            expected_dimension=self.metadata["embedding_dimension"],
-        )
-        return cast(NDArray[np.float32], normalized[0])
 
 
 def _select_top_positions(

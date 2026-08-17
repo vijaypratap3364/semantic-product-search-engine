@@ -106,6 +106,19 @@ def test_reranker_candidate_mode_is_deterministic_and_bounded() -> None:
     assert engine.search_candidates("query", [], 10) == []
 
 
+def test_reranking_stage_can_be_profiled_without_retrieving_candidates() -> None:
+    candidates = [_candidate("p1", 1, 0.9), _candidate("p2", 2, 0.1)]
+    hybrid = StaticHybridEngine(candidates)
+    engine = RerankingSearchEngine(hybrid, ReverseLexicalScorer(), _store(), candidate_depth=2)
+
+    results = engine.rerank("query", candidates, top_k=1)
+
+    assert results[0].product_id == "p2"
+    assert hybrid.requested_depths == []
+    with pytest.raises(ValueError, match="positive integer"):
+        engine.rerank("query", candidates, top_k=0)
+
+
 def test_reranker_rejects_invalid_candidates_and_top_k() -> None:
     duplicate = [_candidate("p1", 1, 0.9), _candidate("p1", 2, 0.1)]
     engine = RerankingSearchEngine(

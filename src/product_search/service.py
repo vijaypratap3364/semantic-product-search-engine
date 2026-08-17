@@ -379,6 +379,16 @@ class SearchService:
     def product_count(self) -> int:
         return len(self._products)
 
+    def loaded_engine(self, mode: ResolvedSearchMode) -> SearchEngine:
+        """Return one verified engine for offline profiling and diagnostics only."""
+
+        try:
+            return self._engines[mode]
+        except KeyError as error:
+            raise SearchModeUnavailableError(
+                f"search mode {mode!r} is not loaded by this service"
+            ) from error
+
     @property
     def metadata(self) -> SearchServiceMetadata:
         """Return display-safe immutable metadata without exposing artifact paths."""
