@@ -129,7 +129,9 @@ def model_arrays(feature_rows: DataFrame) -> tuple[FloatMatrix, NDArray[np.int64
     return matrix, grades
 
 
-def class_distribution(relevance_grades: Sequence[int]) -> dict[int, int]:
+def class_distribution(
+    relevance_grades: Sequence[int] | NDArray[np.int64],
+) -> dict[int, int]:
     """Return deterministic counts for all three expected WANDS grades."""
 
     labels = np.asarray(relevance_grades, dtype=np.int64)

@@ -131,7 +131,7 @@ class RelevanceModel:
 
 def train_relevance_model(
     features: FloatMatrix,
-    relevance_grades: Sequence[int],
+    relevance_grades: Sequence[int] | NDArray[np.int64],
     *,
     c_value: float,
     class_weight: ClassWeightName,
