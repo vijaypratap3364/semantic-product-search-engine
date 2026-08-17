@@ -92,16 +92,24 @@ human-judged candidates for each query and is therefore not comparable to full-c
 
 ## Actual error analysis
 
-Categories use strict per-query judged-candidate nDCG@10 comparisons; ties are not assigned:
+Categories use strict per-query judged-candidate nDCG@10 comparisons and are evaluated
+independently, so they can overlap. Raw memberships are: lexical wins `15`, semantic wins `8`,
+hybrid improves both `11`, and fusion hurts `3`. Queries `261` and `439` belong to both lexical wins
+and fusion hurts. The totals therefore represent 37 raw memberships across 35 unique categorized
+queries.
 
-- Lexical beat both semantic and hybrid for 15 queries. The largest case was `almost heaven sauna`:
-  lexical `0.614042`, semantic `0.375747`, hybrid `0.377503`.
-- Semantic beat both lexical and hybrid for 8 queries. The largest case was
-  `full metal bed rose gold`: lexical `0.000000`, semantic `0.574103`, hybrid `0.345963`.
-- Hybrid beat both component engines for 11 queries. The largest case was
-  `ceramic tile sea shell`: lexical `0.803094`, semantic `0.727383`, hybrid `0.974301`.
-- Fusion hurt relative to both component engines for 3 queries. The largest case was
-  `parsons chairs`: lexical `0.943238`, semantic `0.907425`, hybrid `0.853272`.
+The other 37 validation queries are tie/no-change cases: `L = S = H` for 19 queries,
+`H = S > L` for 17, and `H = L > S` for 1, where `L`, `S`, and `H` denote lexical, semantic, and
+hybrid nDCG@10. Strict ties are intentionally not counted as wins or improvements.
+
+The largest examples in each category were:
+
+- Lexical wins: `almost heaven sauna` — lexical `0.614042`, semantic `0.375747`, hybrid `0.377503`.
+- Semantic wins: `full metal bed rose gold` — lexical `0.000000`, semantic `0.574103`, hybrid
+  `0.345963`.
+- Hybrid improves both: `ceramic tile sea shell` — lexical `0.803094`, semantic `0.727383`, hybrid
+  `0.974301`.
+- Fusion hurts: `parsons chairs` — lexical `0.943238`, semantic `0.907425`, hybrid `0.853272`.
 
 These examples are generated from the validation rankings and canonical human judgments; they are
 not invented demonstrations.
