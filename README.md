@@ -9,8 +9,8 @@ Implementation is in progress. The repository foundation, reproducible WANDS ing
 evaluation judgments, deterministic query splits, offline evaluation framework, TF-IDF lexical
 baseline, dense semantic retrieval, validation-tuned hybrid retrieval, and a train-only lightweight
 relevance reranker are complete. The frozen one-time held-out test evaluation is also complete; the
-artifact-verified Python search service and FastAPI search API are complete. The user interface has
-not been built yet. Local SQLite search analytics and relevance feedback are also complete.
+artifact-verified Python search service, FastAPI search API, local SQLite analytics, and Streamlit
+search dashboard are complete.
 
 ## Prepare WANDS data
 
@@ -37,6 +37,12 @@ uv run python -m product_search.service "round coffee table" --mode default --to
 uv run uvicorn product_search.api.main:app --reload
 ```
 
+With FastAPI running, start the dashboard from a second PowerShell terminal:
+
+```powershell
+uv run streamlit run src/product_search/ui/app.py
+```
+
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
 Git. See [the data-source documentation](docs/data-source.md) for provenance, license, schemas,
 verified counts, and limitations. See [the evaluation documentation](docs/evaluation.md) for the
@@ -53,6 +59,8 @@ validation, response contract, deterministic explanations, and measured startup/
 See [the API documentation](docs/api.md) for endpoints, validation limits, safe error responses,
 and the local development command. See [the analytics documentation](docs/analytics.md) for the
 local-only privacy boundary, database schema, feedback contract, and query-logging toggle.
+See [the dashboard guide](docs/dashboard.md) for the two-process local demo, comparison mode,
+feedback controls, benchmark provenance, and UI failure behavior.
 
 ## Development
 
