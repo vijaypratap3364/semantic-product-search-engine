@@ -43,6 +43,11 @@ def test_load_base_configuration() -> None:
     assert settings.hybrid.semantic_weight_grid == pytest.approx(
         tuple(index / 10 for index in range(11))
     )
+    assert settings.reranker.candidate_depth == 100
+    assert settings.reranker.c_grid == pytest.approx((0.1, 1.0, 10.0))
+    assert settings.reranker.class_weight_options == ("none", "balanced")
+    assert settings.reranker.max_iter == 500
+    assert settings.reranker.default_search_mode == "hybrid"
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
@@ -104,6 +109,27 @@ def test_invalid_hybrid_weight_grid_is_rejected(grid: list[float], message: str)
     with BASE_CONFIG.open("rb") as config_file:
         config = tomllib.load(config_file)
     config["hybrid"]["semantic_weight_grid"] = grid
+
+    with pytest.raises(ValidationError, match=message):
+        ProjectSettings.model_validate(config)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("c_grid", [], "must contain positive finite"),
+        ("c_grid", [1.0, 0.1], "unique and ascending"),
+        ("class_weight_options", ["none", "none"], "must be unique"),
+    ],
+)
+def test_invalid_reranker_search_grid_is_rejected(
+    key: str,
+    value: object,
+    message: str,
+) -> None:
+    with BASE_CONFIG.open("rb") as config_file:
+        config = tomllib.load(config_file)
+    config["reranker"][key] = value
 
     with pytest.raises(ValidationError, match=message):
         ProjectSettings.model_validate(config)

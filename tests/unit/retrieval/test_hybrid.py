@@ -86,6 +86,8 @@ def test_weighted_fusion_combines_normalized_scores_and_components() -> None:
     assert results[0].score_components == {
         "lexical_raw": 0.0,
         "semantic_raw": 1.0,
+        "lexical_rank": 2.0,
+        "semantic_rank": 1.0,
         "lexical_normalized": 0.0,
         "semantic_normalized": 1.0,
         "lexical_rrf": pytest.approx(1.0 / 62.0),
@@ -112,6 +114,8 @@ def test_rrf_uses_ranks_and_zero_contribution_for_missing_scores() -> None:
     assert results[2].score == 0.0
     assert results[2].score_components["lexical_present"] == 0.0  # type: ignore[index]
     assert results[2].score_components["semantic_present"] == 0.0  # type: ignore[index]
+    assert results[2].score_components["lexical_rank"] == 0.0  # type: ignore[index]
+    assert results[2].score_components["semantic_rank"] == 0.0  # type: ignore[index]
 
 
 def test_fusion_ties_are_broken_by_product_id_not_input_rank() -> None:
