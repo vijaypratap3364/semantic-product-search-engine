@@ -121,6 +121,17 @@ class ServiceBenchmark:
     result_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class SearchServiceMetadata:
+    """Safe immutable model and artifact metadata for transport layers."""
+
+    default_search_mode: ResolvedSearchMode
+    embedding_model: str
+    product_count: int
+    artifact_version: str
+    build_timestamp: str
+
+
 class SearchService:
     """Load static artifacts once and expose every supported search mode consistently."""
 
@@ -134,6 +145,9 @@ class SearchService:
         semantic_weight: float,
         initialization_time_ms: float,
         selection_sha256: str,
+        embedding_model: str,
+        artifact_version: str,
+        build_timestamp: str,
         clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         if default_mode not in engines:
@@ -150,6 +164,9 @@ class SearchService:
         self._clock = clock
         self.initialization_time_ms = initialization_time_ms
         self.selection_sha256 = selection_sha256
+        self._embedding_model = embedding_model
+        self._artifact_version = artifact_version
+        self._build_timestamp = build_timestamp
 
     @classmethod
     def load(
@@ -179,6 +196,16 @@ class SearchService:
         )
         selection = _read_selection(selection_path)
         default_mode = _selected_mode(selection)
+        artifact_version = _required_string(
+            selection,
+            "immutable_configuration_sha256",
+            owner="final engine selection",
+        )
+        build_timestamp = _required_string(
+            selection,
+            "created_at",
+            owner="final engine selection",
+        )
         components = _selection_components(selection)
         reranker_selected = default_mode == "rerank"
 
@@ -327,6 +354,9 @@ class SearchService:
             semantic_weight=semantic_weight,
             initialization_time_ms=initialization_time_ms,
             selection_sha256=sha256_file(selection_path),
+            embedding_model=model_name,
+            artifact_version=artifact_version,
+            build_timestamp=build_timestamp,
             clock=clock,
         )
 
@@ -348,6 +378,18 @@ class SearchService:
     @property
     def product_count(self) -> int:
         return len(self._products)
+
+    @property
+    def metadata(self) -> SearchServiceMetadata:
+        """Return display-safe immutable metadata without exposing artifact paths."""
+
+        return SearchServiceMetadata(
+            default_search_mode=self._default_mode,
+            embedding_model=self._embedding_model,
+            product_count=self.product_count,
+            artifact_version=self._artifact_version,
+            build_timestamp=self._build_timestamp,
+        )
 
     def search(
         self,

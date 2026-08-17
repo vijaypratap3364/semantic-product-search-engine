@@ -1,1 +1,1 @@
-"""FastAPI transport layer introduced in a later stage."""
+"""FastAPI transport layer for the product search service."""
