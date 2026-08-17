@@ -48,6 +48,10 @@ def test_load_base_configuration() -> None:
     assert settings.reranker.class_weight_options == ("none", "balanced")
     assert settings.reranker.max_iter == 500
     assert settings.reranker.default_search_mode == "reranker"
+    assert settings.analytics.query_logging_enabled is True
+    assert settings.analytics.database_path == (
+        PROJECT_ROOT / "data" / "local" / "search_analytics.sqlite"
+    )
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
@@ -68,6 +72,9 @@ def test_project_root_can_be_overridden(tmp_path: Path) -> None:
 
     assert settings.paths.raw_data == tmp_path / "data" / "raw"
     assert settings.paths.reports == tmp_path / "artifacts" / "reports"
+    assert (
+        settings.analytics.database_path == tmp_path / "data" / "local" / "search_analytics.sqlite"
+    )
 
 
 def test_invalid_split_total_is_rejected() -> None:
