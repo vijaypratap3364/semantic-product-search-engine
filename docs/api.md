@@ -26,6 +26,8 @@ running. Model loading is local-only at API startup.
 | `GET` | `/model` | Safe immutable selected-model and artifact metadata |
 | `GET` | `/modes` | Search modes loaded by the service |
 | `POST` | `/search` | Execute one product search |
+| `POST` | `/feedback` | Record feedback for a product returned by a logged search |
+| `GET` | `/analytics/summary` | Aggregate-only local demo analytics |
 
 `/model` returns the resolved default mode, embedding model, product count, immutable configuration
 hash as the artifact version, and final-selection build timestamp. It does not expose artifact
@@ -50,9 +52,10 @@ Validation rules are:
 - `mode` is one of `default`, `lexical`, `semantic`, `hybrid`, or `rerank`.
 
 The response contains the normalized query, resolved mode, service latency, result count, and
-ranked display-safe results. Result objects contain the Stage 9 service fields and deterministic
-score explanations. They do not expose `product_text`, product feature strings, local paths, or
-other internal artifact data.
+ranked display-safe results. When local query logging succeeds, it also contains a `search_id` that
+can be sent to `/feedback`; otherwise `search_id` is `null`. Result objects contain the Stage 9
+service fields and deterministic score explanations. They do not expose `product_text`, product
+feature strings, local paths, or other internal artifact data.
 
 ## Readiness and errors
 
@@ -83,3 +86,5 @@ errors return sanitized messages without filesystem paths, exception strings, or
 
 The process keeps request count, error count, and average end-to-end HTTP latency in memory. These
 counters are informational, reset on process restart, and require no Prometheus service.
+
+SQLite search analytics and feedback are documented in [the local analytics guide](analytics.md).

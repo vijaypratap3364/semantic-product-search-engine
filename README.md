@@ -10,7 +10,7 @@ evaluation judgments, deterministic query splits, offline evaluation framework, 
 baseline, dense semantic retrieval, validation-tuned hybrid retrieval, and a train-only lightweight
 relevance reranker are complete. The frozen one-time held-out test evaluation is also complete; the
 artifact-verified Python search service and FastAPI search API are complete. The user interface has
-not been built yet.
+not been built yet. Local SQLite search analytics and relevance feedback are also complete.
 
 ## Prepare WANDS data
 
@@ -51,7 +51,8 @@ default, latency boundary, hardware, limitations, failure modes, biases, and unj
 caveat. See [the service-layer documentation](docs/service.md) for the Python interface, artifact
 validation, response contract, deterministic explanations, and measured startup/query latency.
 See [the API documentation](docs/api.md) for endpoints, validation limits, safe error responses,
-and the local development command.
+and the local development command. See [the analytics documentation](docs/analytics.md) for the
+local-only privacy boundary, database schema, feedback contract, and query-logging toggle.
 
 ## Development
 
