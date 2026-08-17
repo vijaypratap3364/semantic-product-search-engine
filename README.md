@@ -8,7 +8,8 @@ framework.
 Implementation is in progress. The repository foundation, reproducible WANDS ingestion, canonical
 evaluation judgments, deterministic query splits, offline evaluation framework, TF-IDF lexical
 baseline, dense semantic retrieval, validation-tuned hybrid retrieval, and a train-only lightweight
-relevance reranker are complete. The API and user interface have not been built yet.
+relevance reranker are complete. The frozen one-time held-out test evaluation is also complete; the
+API and user interface have not been built yet.
 
 ## Prepare WANDS data
 
@@ -29,6 +30,8 @@ uv run python -m product_search.evaluation.benchmark_lexical
 uv run python -m product_search.evaluation.benchmark_semantic --local-files-only
 uv run python -m product_search.evaluation.benchmark_hybrid --local-files-only
 uv run python -m product_search.evaluation.benchmark_reranker --local-files-only --force
+uv run python -m product_search.evaluation.benchmark_final --verify-only --local-files-only
+uv run python -m product_search.evaluation.benchmark_final --local-files-only
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
@@ -40,6 +43,9 @@ validation metrics, latency, and error analysis. The [dense semantic report](doc
 and [hybrid retrieval report](docs/hybrid-search.md) document their measured validation results and
 selection policies. See [the lightweight reranker report](docs/reranker.md) for its leakage controls,
 model-selection grid, classification diagnostics, ranking comparison, and production decision.
+The [search model card](docs/search-model-card.md) records the frozen held-out comparison, selected
+default, latency boundary, hardware, limitations, failure modes, biases, and unjudged-product
+caveat.
 
 ## Development
 

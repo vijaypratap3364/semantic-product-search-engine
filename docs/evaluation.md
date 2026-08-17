@@ -158,5 +158,41 @@ relevance metrics.
   failure diagnostics.
 
 Latency uses a monotonic high-resolution process clock around the engine search call and result
-contract validation. No search-quality or latency numbers are documented yet because no retrieval
-model has been implemented or benchmarked.
+contract validation.
+
+## Frozen held-out test evaluation
+
+Stage 8 first validates hashes and freezes the train/validation-selected lexical, semantic, hybrid,
+and eligible reranker configurations without reading test-query rows:
+
+```powershell
+uv run python -m product_search.evaluation.benchmark_final --verify-only --local-files-only
+```
+
+The one-time final command then evaluates only the 72 test query IDs. It exposes no tuning or
+weight-search arguments and refuses to overwrite an existing final report family:
+
+```powershell
+uv run python -m product_search.evaluation.benchmark_final --local-files-only
+```
+
+The run completed with zero failed queries and no train or validation queries evaluated. Primary
+judged-candidate results were:
+
+| System | nDCG@5 | nDCG@10 | P@5 | P@10 | R@5 | R@10 | MRR@10 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Lexical | 0.725720 | 0.743282 | 0.886111 | 0.866667 | 0.066113 | 0.102704 | 0.936921 |
+| Semantic | 0.810471 | 0.815459 | 0.952778 | 0.941667 | 0.069452 | 0.110821 | 0.969907 |
+| Hybrid | 0.814875 | 0.817523 | 0.955556 | 0.944444 | 0.069422 | 0.110977 | 0.976852 |
+| Reranked hybrid | **0.824809** | **0.827633** | 0.952778 | 0.941667 | 0.069155 | 0.110600 | 0.972222 |
+
+The quality-first selection policy chose reranked hybrid. Full-catalog median/p95 latencies were
+196.306/203.228 ms for lexical, 7.857/8.895 ms for semantic, 206.788/214.336 ms for hybrid, and
+231.112/265.917 ms for reranked hybrid. These warm-process measurements include all work inside
+`search(query, top_k=10)` but exclude index and model initialization.
+
+The local report family contains aggregate JSON/CSV, combined per-query metrics, the immutable
+selected-engine configuration, a Markdown comparison, and SVG charts for system quality,
+per-query nDCG@10 distributions, and latency. Generated reports remain ignored by Git. The
+[search model card](search-model-card.md) records the complete comparison, hardware, limitations,
+failure modes, biases, and incomplete-judgment caveat.
