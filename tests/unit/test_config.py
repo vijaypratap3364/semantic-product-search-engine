@@ -36,6 +36,13 @@ def test_load_base_configuration() -> None:
     assert settings.dense.expected_dimension == 384
     assert settings.dense.batch_size == 1
     assert settings.dense.normalization == "l2"
+    assert settings.hybrid.strategy == "weighted_normalized"
+    assert settings.hybrid.semantic_weight == 0.5
+    assert settings.hybrid.candidate_depth == 100
+    assert settings.hybrid.rrf_k == 60
+    assert settings.hybrid.semantic_weight_grid == pytest.approx(
+        tuple(index / 10 for index in range(11))
+    )
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
@@ -83,6 +90,22 @@ def test_invalid_lexical_ngram_range_is_rejected() -> None:
     config["lexical"]["ngram_max"] = 1
 
     with pytest.raises(ValidationError, match="ngram_min must not exceed ngram_max"):
+        ProjectSettings.model_validate(config)
+
+
+@pytest.mark.parametrize(
+    ("grid", "message"),
+    [
+        ([0.0, 0.5, 0.5, 1.0], "unique and ascending"),
+        ([0.0, 1.1], "between 0.0 and 1.0"),
+    ],
+)
+def test_invalid_hybrid_weight_grid_is_rejected(grid: list[float], message: str) -> None:
+    with BASE_CONFIG.open("rb") as config_file:
+        config = tomllib.load(config_file)
+    config["hybrid"]["semantic_weight_grid"] = grid
+
+    with pytest.raises(ValidationError, match=message):
         ProjectSettings.model_validate(config)
 
 
