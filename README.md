@@ -6,9 +6,9 @@ retrieval, and a lightweight supervised relevance reranker under a shared offlin
 framework.
 
 Implementation is in progress. The repository foundation, reproducible WANDS ingestion, canonical
-evaluation judgments, deterministic query splits, offline evaluation framework, and TF-IDF lexical
-baseline are complete. Dense/hybrid retrieval, ranking models, the API, and the user interface have
-not been built yet.
+evaluation judgments, deterministic query splits, offline evaluation framework, TF-IDF lexical
+baseline, dense semantic retrieval, and validation-tuned hybrid retrieval are complete. Ranking
+models, the API, and the user interface have not been built yet.
 
 ## Prepare WANDS data
 
@@ -20,8 +20,13 @@ uv run python -m product_search.data.prepare
 uv run python -m product_search.evaluation.judgments
 uv run python -m product_search.evaluation.splits
 uv run python -m product_search.indexing.build_lexical
+uv run python -m product_search.indexing.build_dense
 uv run python -m product_search.retrieval.lexical "round coffee table"
+uv run python -m product_search.retrieval.semantic "round coffee table"
+uv run python -m product_search.retrieval.hybrid "round coffee table" --local-files-only
 uv run python -m product_search.evaluation.benchmark_lexical
+uv run python -m product_search.evaluation.benchmark_semantic --local-files-only
+uv run python -m product_search.evaluation.benchmark_hybrid --local-files-only
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
@@ -29,7 +34,9 @@ Git. See [the data-source documentation](docs/data-source.md) for provenance, li
 verified counts, and limitations. See [the evaluation documentation](docs/evaluation.md) for the
 canonical judgment policy, query partitions, metric definitions, evaluation modes, and reporting.
 See [the lexical baseline report](docs/lexical-baseline.md) for index configuration, measured
-validation metrics, latency, and error analysis.
+validation metrics, latency, and error analysis. The [dense semantic report](docs/semantic-search.md)
+and [hybrid retrieval report](docs/hybrid-search.md) document their measured validation results and
+selection policies.
 
 ## Development
 
