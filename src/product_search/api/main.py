@@ -16,11 +16,21 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from product_search.analytics.database import SQLiteAnalyticsDatabase
+from product_search.analytics.repository import (
+    AnalyticsRepository,
+    ProductNotInSearchError,
+    QueryLoggingDisabledError,
+    SearchEventNotFoundError,
+)
 from product_search.api.schemas import (
+    AnalyticsSummaryResponse,
     ApiSearchMode,
     ErrorBody,
     ErrorDetail,
     ErrorResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     HealthResponse,
     ModelResponse,
     ModesResponse,
@@ -29,6 +39,7 @@ from product_search.api.schemas import (
     SearchApiResponse,
     SearchRequest,
 )
+from product_search.config import load_settings
 from product_search.service import (
     SearchModeUnavailableError,
     SearchService,
@@ -37,6 +48,7 @@ from product_search.service import (
 
 LOGGER = logging.getLogger(__name__)
 ServiceLoader = Callable[[], SearchService]
+AnalyticsLoader = Callable[[], AnalyticsRepository]
 
 
 @dataclass(slots=True)
@@ -69,8 +81,10 @@ class ApiRuntime:
     """Application-owned service and health state."""
 
     service: SearchService | None = None
+    analytics: AnalyticsRepository | None = None
     startup_attempted: bool = False
     startup_failed: bool = False
+    analytics_failed: bool = False
     metrics: RequestMetrics = field(default_factory=RequestMetrics)
 
 
@@ -78,7 +92,19 @@ def _default_service_loader() -> SearchService:
     return SearchService.load(local_files_only=True)
 
 
-def create_app(*, service_loader: ServiceLoader = _default_service_loader) -> FastAPI:
+def _default_analytics_loader() -> AnalyticsRepository:
+    settings = load_settings()
+    return AnalyticsRepository(
+        SQLiteAnalyticsDatabase(settings.analytics.database_path),
+        query_logging_enabled=settings.analytics.query_logging_enabled,
+    )
+
+
+def create_app(
+    *,
+    service_loader: ServiceLoader = _default_service_loader,
+    analytics_loader: AnalyticsLoader | None = _default_analytics_loader,
+) -> FastAPI:
     """Create an app whose lifespan loads the static search service exactly once."""
 
     runtime = ApiRuntime()
@@ -91,6 +117,14 @@ def create_app(*, service_loader: ServiceLoader = _default_service_loader) -> Fa
         except SearchServiceStartupError:
             runtime.startup_failed = True
             LOGGER.exception("Search service artifacts failed startup validation")
+        if analytics_loader is not None:
+            try:
+                runtime.analytics = analytics_loader()
+                runtime.analytics.initialize()
+            except Exception:
+                runtime.analytics_failed = True
+                runtime.analytics = None
+                LOGGER.exception("Local analytics failed startup initialization")
         app.state.runtime = runtime
         yield
 
@@ -202,7 +236,81 @@ def create_app(*, service_loader: ServiceLoader = _default_service_loader) -> Fa
         if service is None:
             return _service_unavailable_response()
         response = service.search(payload.query, top_k=payload.top_k, mode=payload.mode)
-        return SearchApiResponse.from_service_response(response)
+        search_id: str | None = None
+        repository = _ready_analytics(runtime)
+        if repository is not None:
+            try:
+                event = repository.log_search(
+                    query=response.query,
+                    mode=response.resolved_mode,
+                    top_k=payload.top_k,
+                    latency_ms=response.latency_ms,
+                    returned_product_ids=tuple(result.product_id for result in response.results),
+                    session_id=payload.session_id,
+                )
+                search_id = None if event is None else event.search_id
+            except Exception:
+                LOGGER.exception("Local search analytics logging failed")
+        return SearchApiResponse.from_service_response(response, search_id=search_id)
+
+    @app.post("/feedback", response_model=FeedbackResponse, status_code=201)
+    def feedback(payload: FeedbackRequest) -> FeedbackResponse | JSONResponse:
+        repository = _ready_analytics(runtime)
+        if repository is None:
+            return _analytics_unavailable_response()
+        try:
+            event = repository.log_feedback(
+                search_id=payload.search_id,
+                product_id=payload.product_id,
+                feedback_type=payload.feedback_type,
+            )
+        except SearchEventNotFoundError:
+            return _error_response(
+                status_code=404,
+                code="search_event_not_found",
+                message="The referenced search event does not exist.",
+            )
+        except ProductNotInSearchError:
+            return _error_response(
+                status_code=400,
+                code="product_not_in_search",
+                message="The product was not returned by the referenced search.",
+            )
+        except QueryLoggingDisabledError:
+            return _error_response(
+                status_code=409,
+                code="query_logging_disabled",
+                message="Local query logging is disabled.",
+            )
+        except Exception:
+            LOGGER.exception("Local feedback analytics logging failed")
+            return _analytics_unavailable_response()
+        return FeedbackResponse(
+            feedback_id=event.feedback_id,
+            search_id=event.search_id,
+            timestamp=event.timestamp,
+            product_id=event.product_id,
+            feedback_type=event.feedback_type,
+        )
+
+    @app.get("/analytics/summary", response_model=AnalyticsSummaryResponse)
+    def analytics_summary() -> AnalyticsSummaryResponse | JSONResponse:
+        repository = _ready_analytics(runtime)
+        if repository is None:
+            return _analytics_unavailable_response()
+        try:
+            summary = repository.summary()
+        except Exception:
+            LOGGER.exception("Local analytics summary failed")
+            return _analytics_unavailable_response()
+        return AnalyticsSummaryResponse(
+            query_logging_enabled=summary.query_logging_enabled,
+            search_count=summary.search_count,
+            feedback_count=summary.feedback_count,
+            average_latency_ms=summary.average_latency_ms,
+            searches_by_mode=summary.searches_by_mode,
+            feedback_by_type=summary.feedback_by_type,
+        )
 
     return app
 
@@ -213,11 +321,25 @@ def _ready_service(runtime: ApiRuntime) -> SearchService | None:
     return runtime.service
 
 
+def _ready_analytics(runtime: ApiRuntime) -> AnalyticsRepository | None:
+    if runtime.analytics_failed:
+        return None
+    return runtime.analytics
+
+
 def _service_unavailable_response() -> JSONResponse:
     return _error_response(
         status_code=503,
         code="search_service_unavailable",
         message="Search artifacts are not ready.",
+    )
+
+
+def _analytics_unavailable_response() -> JSONResponse:
+    return _error_response(
+        status_code=503,
+        code="analytics_unavailable",
+        message="Local analytics are not available.",
     )
 
 

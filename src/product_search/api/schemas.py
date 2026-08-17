@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from product_search.analytics.repository import FeedbackType
 from product_search.service import ProductSearchResult, SearchResponse
 
 ApiSearchMode = Literal["default", "lexical", "semantic", "hybrid", "rerank"]
@@ -18,6 +19,9 @@ MAX_TOP_K = 100
 QueryText = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_QUERY_LENGTH),
+]
+IdentifierText = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
 ]
 
 
@@ -33,6 +37,7 @@ class SearchRequest(ApiModel):
     query: QueryText
     top_k: int = Field(default=10, ge=MIN_TOP_K, le=MAX_TOP_K, strict=True)
     mode: ApiSearchMode = "default"
+    session_id: IdentifierText | None = None
 
 
 class SearchExplanationResponse(ApiModel):
@@ -89,11 +94,14 @@ class SearchApiResponse(ApiModel):
     query: str
     mode: ResolvedApiSearchMode
     latency_ms: float
+    search_id: str | None
     result_count: int
     results: tuple[SearchResultResponse, ...]
 
     @classmethod
-    def from_service_response(cls, response: SearchResponse) -> SearchApiResponse:
+    def from_service_response(
+        cls, response: SearchResponse, *, search_id: str | None = None
+    ) -> SearchApiResponse:
         """Translate the transport-independent service response."""
 
         results = tuple(SearchResultResponse.from_service_result(item) for item in response.results)
@@ -101,9 +109,39 @@ class SearchApiResponse(ApiModel):
             query=response.query,
             mode=response.resolved_mode,
             latency_ms=response.latency_ms,
+            search_id=search_id,
             result_count=len(results),
             results=results,
         )
+
+
+class FeedbackRequest(ApiModel):
+    """Validated feedback tied to one returned search product."""
+
+    search_id: IdentifierText
+    product_id: IdentifierText
+    feedback_type: FeedbackType
+
+
+class FeedbackResponse(ApiModel):
+    """One persisted feedback event."""
+
+    feedback_id: str
+    search_id: str
+    timestamp: str
+    product_id: str
+    feedback_type: FeedbackType
+
+
+class AnalyticsSummaryResponse(ApiModel):
+    """Aggregate-only local demo analytics."""
+
+    query_logging_enabled: bool
+    search_count: int
+    feedback_count: int
+    average_latency_ms: float
+    searches_by_mode: dict[str, int]
+    feedback_by_type: dict[str, int]
 
 
 class ProcessMetricsResponse(ApiModel):
