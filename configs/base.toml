@@ -48,4 +48,4 @@ candidate_depth = 100
 c_grid = [0.1, 1.0, 10.0]
 class_weight_options = ["none", "balanced"]
 max_iter = 500
-default_search_mode = "hybrid"
+default_search_mode = "reranker"

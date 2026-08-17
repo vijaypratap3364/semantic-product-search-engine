@@ -47,7 +47,7 @@ def test_load_base_configuration() -> None:
     assert settings.reranker.c_grid == pytest.approx((0.1, 1.0, 10.0))
     assert settings.reranker.class_weight_options == ("none", "balanced")
     assert settings.reranker.max_iter == 500
-    assert settings.reranker.default_search_mode == "hybrid"
+    assert settings.reranker.default_search_mode == "reranker"
     assert settings.paths.raw_data == PROJECT_ROOT / "data" / "raw"
     assert settings.paths.indexes == PROJECT_ROOT / "artifacts" / "indexes"
     assert all(
