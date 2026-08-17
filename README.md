@@ -7,8 +7,8 @@ framework.
 
 Implementation is in progress. The repository foundation, reproducible WANDS ingestion, canonical
 evaluation judgments, deterministic query splits, offline evaluation framework, TF-IDF lexical
-baseline, dense semantic retrieval, and validation-tuned hybrid retrieval are complete. Ranking
-models, the API, and the user interface have not been built yet.
+baseline, dense semantic retrieval, validation-tuned hybrid retrieval, and a train-only lightweight
+relevance reranker are complete. The API and user interface have not been built yet.
 
 ## Prepare WANDS data
 
@@ -24,9 +24,11 @@ uv run python -m product_search.indexing.build_dense
 uv run python -m product_search.retrieval.lexical "round coffee table"
 uv run python -m product_search.retrieval.semantic "round coffee table"
 uv run python -m product_search.retrieval.hybrid "round coffee table" --local-files-only
+uv run python -m product_search.ranking.reranker "round coffee table" --local-files-only
 uv run python -m product_search.evaluation.benchmark_lexical
 uv run python -m product_search.evaluation.benchmark_semantic --local-files-only
 uv run python -m product_search.evaluation.benchmark_hybrid --local-files-only
+uv run python -m product_search.evaluation.benchmark_reranker --local-files-only --force
 ```
 
 Raw data, processed tables, manifests, and generated reports remain local and are excluded from
@@ -36,7 +38,8 @@ canonical judgment policy, query partitions, metric definitions, evaluation mode
 See [the lexical baseline report](docs/lexical-baseline.md) for index configuration, measured
 validation metrics, latency, and error analysis. The [dense semantic report](docs/semantic-search.md)
 and [hybrid retrieval report](docs/hybrid-search.md) document their measured validation results and
-selection policies.
+selection policies. See [the lightweight reranker report](docs/reranker.md) for its leakage controls,
+model-selection grid, classification diagnostics, ranking comparison, and production decision.
 
 ## Development
 
