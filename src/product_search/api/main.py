@@ -130,7 +130,7 @@ def create_app(
 
     app = FastAPI(
         title="Semantic Product Search API",
-        version="0.1.0",
+        version="1.0.0",
         lifespan=lifespan,
     )
     app.state.runtime = runtime
